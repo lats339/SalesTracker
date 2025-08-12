@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Sales Tracker — BTS / CV / PP</title>
+<style>
+  :root{
+    --bg:#0f1724;
+    --card:#0b1220;
+    --muted:#94a3b8;
+    --accent:#6ee7b7;
+    --accent-2:#60a5fa;
+    --glass: rgba(255,255,255,0.03);
+    --glass-2: rgba(255,255,255,0.02);
+    --danger:#fb7185;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;background:linear-gradient(180deg,#061024 0%, #071733 60%);color:#e6eef6;margin:0;padding:0}
+  .app{
+    max-width:1200px;margin:24px auto;padding:20px;border-radius:14px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));backdrop-filter: blur(6px);
+    box-shadow: 0 6px 30px rgba(2,6,23,0.6), inset 0 1px 0 rgba(255,255,255,0.02);
+  }
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:700;color:#052025}
+  h1{font-size:20px;margin:0}
+  .controls{display:flex;gap:12px;align-items:center}
+  .product-btns{display:flex;gap:8px}
+  .prod{
+    padding:10px 14px;border-radius:10px;background:var(--glass);border:1px solid rgba(255,255,255,0.03);cursor:pointer;display:flex;gap:8px;align-items:center;
+    transition:transform .12s ease,box-shadow .12s;
+    user-select:none;
+  }
+  .prod:hover{transform:translateY(-3px)}
+  .prod .badge{font-weight:700}
+  .add-widget-btn{padding:10px 14px;border-radius:10px;background:linear-gradient(90deg, rgba(96,165,250,0.12), rgba(110,231,183,0.08));border:1px solid rgba(255,255,255,0.04);cursor:pointer}
+  .top-actions{display:flex;gap:8px}
+  .icon-btn{background:var(--glass);padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.02);cursor:pointer}
+  .main{display:grid;grid-template-columns: 1fr 300px;gap:18px;margin-top:18px}
+  .dashboard{
+    min-height:360px;padding:14px;border-radius:12px;background:linear-gradient(180deg,var(--card), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.02);
+    display:flex;flex-direction:column;gap:12px;
+  }
+  .grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;
+  }
+  .widget{
+    background:var(--glass-2);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.02);position:relative;min-height:92px;
+    display:flex;flex-direction:column;gap:8px;
+  }
+  .widget-header{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:grab}
+  .widget h3{margin:0;font-size:13px}
+  .widget .widget-controls{display:flex;gap:6px;align-items:center}
+  .small{font-size:12px;color:var(--muted)}
+  .big-num{font-weight:700;font-size:22px}
+  .counter-btn{padding:10px;border-radius:10px;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#042025;font-weight:800;border:none;cursor:pointer}
+  .list{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{padding:6px 8px;border-radius:999px;background:rgba(255,255,255,0.02);font-weight:600}
+  .sidebar{padding:14px;border-radius:12px;background:linear-gradient(180deg,var(--card), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.02);display:flex;flex-direction:column;gap:12px}
+  label{font-size:13px;color:var(--muted)}
+  select,input{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;width:100%}
+  .muted{color:var(--muted)}
+  footer{margin-top:14px;display:flex;justify-content:space-between;gap:12px;align-items:center}
+  .csv-actions{display:flex;gap:8px}
+  .ghost{background:transparent;border:1px dashed rgba(255,255,255,0.04);padding:8px;border-radius:8px}
+  .widget.dragging{opacity:0.6;transform:scale(.995)}
+  .widget .sparkline{height:44px;width:100%}
+  .widget .days{display:flex;gap:6px;align-items:center}
+  .day{flex:1;text-align:center;font-weight:700;padding:6px;border-radius:6px;background:rgba(255,255,255,0.02)}
+  .tiny{font-size:11px}
+  .trash{color:var(--danger);cursor:pointer}
+  .help{font-size:12px;color:var(--muted)}
+  @media (max-width:900px){
+    .main{grid-template-columns:1fr}
+  }
+  /* small helpers */
+  .row{display:flex;gap:8px;align-items:center}
+  .select-mini{width:140px}
+  input[type=file]{display:none}
+</style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="Sales Tracker">
+    <header>
+      <div class="brand">
+        <div class="logo">ST</div>
+        <div>
+          <h1>Sales Tracker</h1>
+          <div class="muted small">Products: BTS · CV · PP — Modern widget dashboard</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="product-btns" role="toolbar" aria-label="Quick add sale">
+          <div class="prod" data-product="BTS" title="Add sale to BTS" onclick="addSale('BTS', true)">
+            <div style="width:10px;height:10px;border-radius:50%;background:#6ee7b7"></div>
+            <div><div class="small">BTS</div><div class="badge">+1</div></div>
+          </div>
+          <div class="prod" data-product="CV" onclick="addSale('CV', true)">
+            <div style="width:10px;height:10px;border-radius:50%;background:#60a5fa"></div>
+            <div><div class="small">CV</div><div class="badge">+1</div></div>
+          </div>
+          <div class="prod" data-product="PP" onclick="addSale('PP', true)">
+            <div style="width:10px;height:10px;border-radius:50%;background:#fbbf24"></div>
+            <div><div class="small">PP</div><div class="badge">+1</div></div>
+          </div>
+        </div>
+
+        <button class="add-widget-btn" onclick="openAddWidget()">＋ Add widget</button>
+        <div class="top-actions">
+          <button class="icon-btn" onclick="exportCSV()" title="Export CSV">Export</button>
+          <label class="icon-btn" style="cursor:pointer">
+            <input type="file" id="importFile" accept=".csv" onchange="importCSV(event)">
+            Import
+          </label>
+          <button class="icon-btn" onclick="resetAll()" title="Reset all data">Reset</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="main">
+      <section class="dashboard" aria-live="polite">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div class="small muted">Dashboard</div>
+            <div style="font-weight:800;font-size:16px">Customizable widgets</div>
+          </div>
+          <div class="help small muted">Drag widgets to reorder • Widgets persist in your browser</div>
+        </div>
+
+        <div id="grid" class="grid" aria-label="Widget grid"></div>
+
+        <footer>
+          <div class="small muted">Tip: Use the product quick buttons to add a sale instantly.</div>
+          <div class="csv-actions small">
+            <button class="ghost" onclick="openAddWidget()">Add widget</button>
+          </div>
+        </footer>
+      </section>
+
+      <aside class="sidebar" aria-label="Controls">
+        <div>
+          <label>Products</label>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <div class="chip">BTS</div><div class="chip">CV</div><div class="chip">PP</div>
+          </div>
+        </div>
+
+        <div>
+          <label>Quick add sale</label>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="counter-btn" onclick="addSale('BTS', true)">+ BTS</button>
+            <button class="counter-btn" onclick="addSale('CV', true)">+ CV</button>
+            <button class="counter-btn" onclick="addSale('PP', true)">+ PP</button>
+          </div>
+        </div>
+
+        <div>
+          <label>Add widget</label>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <select id="quickWidgetType" class="select-mini">
+              <option value="total">Total</option>
+              <option value="daily">Last 7 days</option>
+              <option value="counter">Big Counter</option>
+              <option value="spark">Trend (sparkline)</option>
+            </select>
+            <select id="quickWidgetProduct" class="select-mini">
+              <option>BTS</option><option>CV</option><option>PP</option>
+            </select>
+            <button onclick="quickAddWidget()" class="icon-btn">Add</button>
+          </div>
+        </div>
+
+        <div>
+          <label>Backup / Restore</label>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="icon-btn" onclick="exportCSV()">Export CSV</button>
+            <button class="icon-btn" onclick="downloadJSON()">Export JSON</button>
+            <button class="icon-btn" onclick="importJSON()">Import JSON</button>
+          </div>
+        </div>
+
+        <div>
+          <label>About</label>
+          <div class="small muted" style="margin-top:8px">
+            This app stores data locally in your browser (localStorage). Widgets, sales, and settings persist on this device only.
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+<script>
+/* --- Simple Sales Tracker Single File --- 
+   Products: BTS, CV, PP
+   Storage keys: sales-tracker-sales, sales-tracker-widgets
+*/
+
+const PRODUCTS = ['BTS','CV','PP'];
+const LS_SALES = 'sales-tracker-sales-v1';
+const LS_WIDGETS = 'sales-tracker-widgets-v1';
+
+function nowISO(){ return (new Date()).toISOString(); }
+
+function loadSales(){
+  const raw = localStorage.getItem(LS_SALES);
+  if(!raw) {
+    // init with empty arrays
+    const init = {};
+    PRODUCTS.forEach(p=> init[p]=[]);
+    localStorage.setItem(LS_SALES, JSON.stringify(init));
+    return init;
+  }
+  try { return JSON.parse(raw); } catch(e){ return (()=>{
+      const init = {}; PRODUCTS.forEach(p=> init[p]=[]); localStorage.setItem(LS_SALES, JSON.stringify(init)); return init;
+  })(); }
+}
+function saveSales(data){ localStorage.setItem(LS_SALES, JSON.stringify(data)); }
+
+function loadWidgets(){
+  const raw = localStorage.getItem(LS_WIDGETS);
+  if(!raw) {
+    // default starter widgets
+    const starter = [
+      {id:uid(),type:'total',product:'BTS'},
+      {id:uid(),type:'total',product:'CV'},
+      {id:uid(),type:'total',product:'PP'},
+      {id:uid(),type:'daily',product:'BTS'},
+    ];
+    localStorage.setItem(LS_WIDGETS, JSON.stringify(starter));
+    return starter;
+  }
+  try { return JSON.parse(raw); } catch(e){ localStorage.setItem(LS_WIDGETS, JSON.stringify([])); return []; }
+}
+function saveWidgets(data){ localStorage.setItem(LS_WIDGETS, JSON.stringify(data)); }
+
+/* Utilities */
+function uid(len=8){ return Math.random().toString(36).slice(2,2+len); }
+function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
+
+/* Sales functions */
+let salesData = loadSales();
+let widgets = loadWidgets();
+
+function addSale(product, visual=false){
+  if(!PRODUCTS.includes(product)) return;
+  const stamp = nowISO();
+  salesData[product].push(stamp);
+  saveSales(salesData);
+  if(visual) flashAdd(product);
+  renderAll();
+}
+
+function removeLast(product){
+  if(!salesData[product]||!salesData[product].length) return;
+  salesData[product].pop();
+  saveSales(salesData);
+  renderAll();
+}
+
+function totalSales(product){ return (salesData[product]||[]).length; }
+
+/* counts per day for last N days */
+function countsPerDay(product, days=7){
+  const arr = salesData[product]||[];
+  const now = new Date();
+  const counts = Array(days).fill(0);
+  for(const ts of arr){
+    const d = new Date(ts);
+    const diffDays = Math.floor(( (endOfDay(now) - startOfDay(d)) / 86400000 ));
+    // we want counts for days: today (0) .. days-1
+    const dayIndex = diffDays;
+    if(dayIndex >= 0 && dayIndex < days){
+      counts[dayIndex] += 1;
+    }
+  }
+  // we built with 0 = today; reverse to show oldest->newest later if needed
+  return counts;
+}
+function startOfDay(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate(),0,0,0,0); }
+function endOfDay(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate(),23,59,59,999); }
+
+/* render / widgets */
+const grid = document.getElementById('grid');
+
+function renderAll(){
+  salesData = loadSales(); widgets = loadWidgets();
+  renderWidgets();
+}
+
+function renderWidgets(){
+  grid.innerHTML = '';
+  widgets.forEach((w, idx) => {
+    const el = document.createElement('div');
+    el.className = 'widget';
+    el.draggable = true;
+    el.dataset.id = w.id;
+    el.innerHTML = widgetInnerHTML(w);
+    grid.appendChild(el);
+
+    // drag events
+    el.addEventListener('dragstart', e=>{
+      el.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', w.id);
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    el.addEventListener('dragend', e=>{
+      el.classList.remove('dragging');
+    });
+
+    // drop handling on container for reorder
+    el.addEventListener('dragover', e => e.preventDefault());
+    el.addEventListener('drop', e=>{
+      e.preventDefault();
+      const dragId = e.dataTransfer.getData('text/plain');
+      if(!dragId) return;
+      reorderWidget(dragId, w.id);
+    });
+
+    // widget actions
+    const addSaleBtn = el.querySelector('.counter-btn');
+    if(addSaleBtn){
+      addSaleBtn.addEventListener('click', ()=> addSale(w.product, true));
+    }
+    const deleteBtn = el.querySelector('.trash');
+    if(deleteBtn){
+      deleteBtn.addEventListener('click', ()=> { removeWidget(w.id); });
+    }
+    const configBtn = el.querySelector('.config-btn');
+    if(configBtn){
+      configBtn.addEventListener('click', ()=> openEditWidget(w.id));
+    }
+
+    // after inserting, render dynamic parts
+    const tEl = el.querySelector('.big-num-js');
+    if(tEl) tEl.textContent = totalSales(w.product);
+
+    const spark = el.querySelector('canvas.spark');
+    if(spark) drawSparkline(spark, w.product);
+
+    const daysEl = el.querySelector('.days');
+    if(daysEl) {
+      renderLast7Days(daysEl, w.product);
+    }
+  });
+
+  // allow dropping at end to move to last
+  grid.addEventListener('dragover', e=> e.preventDefault());
+  grid.addEventListener('drop', e=>{
+    e.preventDefault();
+    const dragId = e.dataTransfer.getData('text/plain');
+    if(!dragId) return;
+    const target = e.target.closest('.widget');
+    if(!target) {
+      // move to end
+      moveWidgetToEnd(dragId);
+    }
+  });
+}
+
+function widgetInnerHTML(w){
+  const title = w.type.charAt(0).toUpperCase() + w.type.slice(1);
+  const prod = w.product || 'BTS';
+  let inner = `
+    <div class="widget-header">
+      <div>
+        <h3>${title} — <span class="small muted">${prod}</span></h3>
+        <div class="small muted tiny">Widget ID: ${w.id}</div>
+      </div>
+      <div class="widget-controls">
+        <button class="icon-btn small config-btn" title="Edit widget">⚙</button>
+        <button class="icon-btn small trash" title="Remove widget">🗑</button>
+      </div>
+    </div>
+  `;
+
+  if(w.type === 'total'){
+    inner += `<div><div class="big-num big-num-js">0</div><div class="small muted">Total sales for ${prod}</div></div>`;
+  } else if(w.type === 'daily'){
+    inner += `<div class="days"></div><div class="small muted tiny">Daily counts (last 7 days)</div>`;
+  } else if(w.type === 'counter'){
+    inner += `<div style="display:flex;gap:8px;align-items:center;justify-content:space-between">
+      <div>
+        <div class="big-num big-num-js">0</div>
+        <div class="small muted">Total</div>
+      </div>
+      <div style="min-width:120px;text-align:right">
+        <button class="counter-btn">+ SALE</button>
+        <div style="margin-top:6px"><button class="icon-btn" onclick="removeLast('${prod}')">undo</button></div>
+      </div>
+    </div>`;
+  } else if(w.type === 'spark'){
+    inner += `<canvas class="spark" width="300" height="44"></canvas><div class="small muted tiny">Trend (30 days)</div>`;
+  } else {
+    inner += `<div class="small muted">Unknown widget</div>`;
+  }
+
+  return inner;
+}
+
+/* widget manipulation */
+function openAddWidget(){
+  // quick modal-like prompt using prompt() (keeps file single-file, no modal)
+  const type = prompt('Widget type (total / daily / counter / spark):','total');
+  if(!type) return;
+  const t = type.trim().toLowerCase();
+  if(!['total','daily','counter','spark'].includes(t)){ alert('Type invalid'); return; }
+  const product = prompt('Product (BTS / CV / PP):','BTS');
+  if(!product) return;
+  const p = product.trim().toUpperCase();
+  if(!PRODUCTS.includes(p)){ alert('Product invalid'); return; }
+  widgets.push({id:uid(), type:t, product:p});
+  saveWidgets(widgets);
+  renderAll();
+}
+
+function quickAddWidget(){
+  const type = document.getElementById('quickWidgetType').value;
+  const product = document.getElementById('quickWidgetProduct').value;
+  widgets.push({id:uid(), type, product});
+  saveWidgets(widgets);
+  renderAll();
+}
+
+function removeWidget(id){
+  widgets = widgets.filter(w=> w.id !== id);
+  saveWidgets(widgets);
+  renderAll();
+}
+
+function openEditWidget(id){
+  const w = widgets.find(x=>x.id===id); if(!w) return;
+  const newType = prompt('Widget type (total / daily / counter / spark):', w.type);
+  if(!newType) return;
+  const t = newType.trim().toLowerCase();
+  if(!['total','daily','counter','spark'].includes(t)){ alert('Type invalid'); return; }
+  const newProduct = prompt('Product (BTS / CV / PP):', w.product);
+  if(!newProduct) return;
+  const p = newProduct.trim().toUpperCase();
+  if(!PRODUCTS.includes(p)){ alert('Product invalid'); return; }
+  w.type = t; w.product = p;
+  saveWidgets(widgets);
+  renderAll();
+}
+
+function reorderWidget(dragId, dropId){
+  const from = widgets.findIndex(w=>w.id===dragId);
+  const to = widgets.findIndex(w=>w.id===dropId);
+  if(from < 0 || to < 0) return;
+  const [item] = widgets.splice(from,1);
+  widgets.splice(to,0,item);
+  saveWidgets(widgets);
+  renderAll();
+}
+
+function moveWidgetToEnd(dragId){
+  const idx = widgets.findIndex(w=>w.id===dragId);
+  if(idx<0) return;
+  const [item] = widgets.splice(idx,1);
+  widgets.push(item);
+  saveWidgets(widgets);
+  renderAll();
+}
+
+/* sparse sparkline drawing */
+function drawSparkline(canvas, product){
+  const ctx = canvas.getContext('2d');
+  const days = 30;
+  const counts = countsPerDay(product, days).slice(0, days); // this returns today->...
+  // countsPerDay returns array where index 0 = today. Reverse to oldest->newest
+  const data = counts.slice().reverse();
+  const w = canvas.width = canvas.clientWidth * (window.devicePixelRatio||1);
+  const h = canvas.height = canvas.clientHeight * (window.devicePixelRatio||1);
+  ctx.clearRect(0,0,w,h);
+  const maxv = Math.max(1, ...data);
+  // draw baseline and fill
+  ctx.beginPath();
+  for(let i=0;i<data.length;i++){
+    const x = (i/(data.length-1 || 1)) * w;
+    const y = h - (data[i]/maxv) * (h-4) - 2;
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.strokeStyle = 'rgba(110,231,183,0.95)';
+  ctx.lineWidth = 2 * (window.devicePixelRatio||1);
+  ctx.stroke();
+
+  // area gradient fill
+  ctx.lineTo(w, h);
+  ctx.lineTo(0, h);
+  ctx.closePath();
+  const g = ctx.createLinearGradient(0,0,0,h);
+  g.addColorStop(0, 'rgba(110,231,183,0.12)');
+  g.addColorStop(1, 'rgba(96,165,250,0.02)');
+  ctx.fillStyle = g;
+  ctx.fill();
+
+  // small points
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  for(let i=0;i<data.length;i++){
+    const x = (i/(data.length-1 || 1)) * w;
+    const y = h - (data[i]/maxv) * (h-4) - 2;
+    if(data[i]>0){
+      ctx.beginPath();
+      ctx.arc(x,y,2 * (window.devicePixelRatio||1),0,Math.PI*2);
+      ctx.fill();
+    }
+  }
+}
+
+/* render last 7 days blocks */
+function renderLast7Days(container, product){
+  container.innerHTML = '';
+  const days = 7;
+  const counts = countsPerDay(product, days); // today->older
+  const reversed = counts.slice().reverse(); // oldest->today
+  const labels = [];
+  for(let i=days-1;i>=0;i--){
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    labels.push(d.toLocaleDateString(undefined,{weekday:'short'}));
+  }
+  reversed.forEach((c,i)=>{
+    const div = document.createElement('div');
+    div.className = 'day';
+    div.innerHTML = `<div style="font-size:12px" class="muted">${labels[i]}</div><div style="font-weight:800">${c}</div>`;
+    container.appendChild(div);
+  });
+}
+
+/* small visual feedback */
+function flashAdd(product){
+  // flash product button
+  const btn = Array.from(document.querySelectorAll('.prod')).find(d=> d.dataset.product===product);
+  if(!btn) return;
+  btn.animate([
+    {transform:'scale(1)'},
+    {transform:'scale(1.05)'},
+    {transform:'scale(1)'}
+  ], {duration:200});
+}
+
+/* CSV Export/Import */
+function exportCSV(){
+  const rows = [['product','timestamp']];
+  for(const p of PRODUCTS){
+    for(const ts of (salesData[p]||[])){
+      rows.push([p, ts]);
+    }
+  }
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'sales-export.csv'; document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importCSV(e){
+  const file = e.target.files?.[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const txt = ev.target.result;
+    parseCSV(txt);
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+function parseCSV(txt){
+  // very simple CSV parse for two columns: product,timestamp
+  const lines = txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  if(lines.length<=1) { alert('No rows found'); return; }
+  const header = lines[0].split(',').map(s => s.replace(/^"|"$/g,'').trim().toLowerCase());
+  const pIdx = header.indexOf('product');
+  const tIdx = header.indexOf('timestamp');
+  if(pIdx < 0 || tIdx < 0) { alert('CSV must include product and timestamp columns'); return; }
+  const imported = {};
+  PRODUCTS.forEach(p=> imported[p]=[]);
+  for(let i=1;i<lines.length;i++){
+    const cols = splitCSVLine(lines[i]);
+    if(!cols) continue;
+    const p = cols[pIdx].replace(/^"|"$/g,'').trim();
+    const t = cols[tIdx].replace(/^"|"$/g,'').trim();
+    if(PRODUCTS.includes(p) && !isNaN(Date.parse(t))){
+      imported[p].push(new Date(t).toISOString());
+    }
+  }
+  // merge: append imported rows to existing data
+  for(const p of PRODUCTS){
+    salesData[p] = (salesData[p]||[]).concat(imported[p]);
+  }
+  saveSales(salesData);
+  renderAll();
+}
+
+function splitCSVLine(line){
+  // naive: split on commas ignoring quoted parts
+  const out=[]; let cur=''; let inQ=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch === '"' && line[i+1]==='"'){ cur+='"'; i++; continue; }
+    if(ch === '"'){ inQ=!inQ; continue; }
+    if(ch === ',' && !inQ){ out.push(cur); cur=''; continue; }
+    cur+=ch;
+  }
+  if(cur!=='') out.push(cur);
+  return out.map(s=>s.trim());
+}
+
+/* JSON backup */
+function downloadJSON(){
+  const payload = {sales: salesData, widgets};
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'sales-backup.json'; document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+function importJSON(){
+  const input = document.createElement('input'); input.type='file'; input.accept='.json';
+  input.addEventListener('change', e=>{
+    const f = e.target.files?.[0]; if(!f) return;
+    const reader = new FileReader();
+    reader.onload = ev=>{
+      try{
+        const data = JSON.parse(ev.target.result);
+        if(data.sales) salesData = data.sales;
+        if(data.widgets) widgets = data.widgets;
+        saveSales(salesData); saveWidgets(widgets);
+        renderAll();
+      }catch(err){ alert('Invalid JSON'); }
+    };
+    reader.readAsText(f);
+  });
+  input.click();
+}
+
+/* Reset */
+function resetAll(){
+  if(!confirm('Reset all sales and widgets? This cannot be undone.')) return;
+  localStorage.removeItem(LS_SALES);
+  localStorage.removeItem(LS_WIDGETS);
+  salesData = loadSales(); widgets = loadWidgets();
+  renderAll();
+}
+
+/* Init */
+renderAll();
+
+/* Re-render periodically (to update relative day counts) and on resize to redraw sparklines */
+setInterval(()=> renderAll(), 20_000);
+window.addEventListener('resize', ()=> renderAll());
+
+</script>
+</body>
+</html>
